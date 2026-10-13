@@ -1,0 +1,4 @@
+# Eksport qilingan yozishmalar - hech qachon repoga tushmasin (shaxsiy ma'lumot)
+messages_*.json
+*.zip
+export/*.json
