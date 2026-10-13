@@ -21,7 +21,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-DEFAULT_API_VERSION = "v22.0"
+DEFAULT_API_VERSION = "v26.0"
 GRAPH = "https://graph.facebook.com"
 
 
