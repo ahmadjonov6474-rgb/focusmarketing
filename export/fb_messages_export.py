@@ -75,7 +75,7 @@ def get(url, params=None, retries=4):
 
 def paginate(url, params, token, limit_pages=None):
     """Graph API sahifalanishini oxirigacha aylanib chiqadi."""
-    params = dict(params, access_token=token)
+    params = dict(params, access_token=token) if params is not None else None
     page = 0
     while url:
         data = get(url, params)
@@ -118,21 +118,44 @@ def list_pages(token, api_version):
     print("Kerakli sahifaning ID va Token'ini olib, keyingi buyruqda ishlating.")
 
 
-def fetch_messages(conv_id, token, api_version, cutoff, max_messages):
-    """Bitta suhbatning xabarlarini yig'adi. Xabarlar yangidan eskiga qarab keladi."""
-    url = f"{GRAPH}/{api_version}/{conv_id}/messages"
-    fields = "id,created_time,from,to,message,attachments{mime_type,name}"
+def older_than(msg, cutoff):
+    created = msg.get("created_time")
+    if not created:
+        return False
+    try:
+        return datetime.fromisoformat(created.replace("Z", "+00:00")) < cutoff
+    except ValueError:
+        return False
+
+
+def fetch_messages(conv_id, token, api_version, cutoff, max_messages,
+                   prefetched=None, next_url=None):
+    """Suhbat xabarlarini yig'adi (yangidan eskiga).
+
+    prefetched - suhbatlar so'rovi bilan birga kelgan birinchi xabarlar.
+    next_url   - o'shaning davomi. Ikkalasi berilsa, qo'shimcha so'rov
+    faqat xabarlar cutoff'ga yetmagan bo'lsa yuboriladi.
+    """
     out = []
-    for msg in paginate(url, {"fields": fields, "limit": 100}, token):
-        created = msg.get("created_time")
-        if created:
-            try:
-                ts = datetime.fromisoformat(created.replace("Z", "+00:00"))
-            except ValueError:
-                ts = None
-            if ts and ts < cutoff:
-                # Eski xabarlarga yetdik - bu suhbatni to'xtatamiz
-                break
+    for msg in (prefetched or []):
+        if older_than(msg, cutoff):
+            out.reverse()
+            return out
+        out.append(msg)
+        if len(out) >= max_messages:
+            out.reverse()
+            return out
+
+    if prefetched is not None and not next_url:
+        out.reverse()
+        return out  # Hammasi allaqachon kelgan - qo'shimcha so'rov shart emas
+
+    url = next_url or f"{GRAPH}/{api_version}/{conv_id}/messages"
+    fields = "id,created_time,from,to,message,attachments{mime_type,name}"
+    params = None if next_url else {"fields": fields, "limit": 100}
+    for msg in paginate(url, params, token):
+        if older_than(msg, cutoff):
+            break  # Eski xabarlarga yetdik - bu suhbatni to'xtatamiz
         out.append(msg)
         if len(out) >= max_messages:
             break
@@ -178,10 +201,12 @@ def export_page(page_id, token, args, cutoff, out_path, page_name=None):
               f"ular o'tkazib yuboriladi")
 
     conv_url = f"{GRAPH}/{args.api_version}/{page_id}/conversations"
+    msg_fields = "id,created_time,from,to,message,attachments{mime_type,name}"
     conv_params = {
         "platform": args.platform,
-        "fields": "id,updated_time,message_count,participants,unread_count",
-        "limit": 50,
+        "fields": ("id,updated_time,message_count,participants,unread_count,"
+                   f"messages.limit(50){{{msg_fields}}}"),
+        "limit": 25,
     }
 
     def build():
@@ -211,8 +236,12 @@ def export_page(page_id, token, args, cutoff, out_path, page_name=None):
             if conv["id"] in seen:
                 continue
 
-            msgs = fetch_messages(conv["id"], token, args.api_version,
-                                  cutoff, args.max_messages)
+            inline = conv.get("messages", {})
+            msgs = fetch_messages(
+                conv["id"], token, args.api_version, cutoff, args.max_messages,
+                prefetched=inline.get("data", []),
+                next_url=inline.get("paging", {}).get("next"),
+            )
             if not msgs:
                 continue
 
