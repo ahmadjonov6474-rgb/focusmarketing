@@ -64,6 +64,12 @@ python3 fb_messages_export.py --page-id ID --token "..." --platform instagram
 
 # Fayl nomini o'zgartirish
 python3 fb_messages_export.py --page-id ID --token "..." --out ilyos_fb.json
+
+# Bir nechta sahifa (User token bilan - tokenlarini o'zi topadi)
+python3 fb_messages_export.py --page-id ID1,ID2,ID3 --token "USER_TOKEN"
+
+# Barcha sahifalar
+python3 fb_messages_export.py --all-pages --token "USER_TOKEN"
 ```
 
 ## Tez-tez uchraydigan xatolar

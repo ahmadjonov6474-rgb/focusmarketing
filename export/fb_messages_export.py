@@ -25,8 +25,13 @@ DEFAULT_API_VERSION = "v26.0"
 GRAPH = "https://graph.facebook.com"
 
 
+# Sahifa tokenini aniqlashga urinayotganda xatolar ekranga chiqmasligi kerak
+_quiet = False
+
+
 def die(msg):
-    print(f"\nXATO: {msg}", file=sys.stderr)
+    if not _quiet:
+        print(f"\nXATO: {msg}", file=sys.stderr)
     sys.exit(1)
 
 
@@ -83,12 +88,27 @@ def paginate(url, params, token, limit_pages=None):
         url = data.get("paging", {}).get("next")
 
 
-def list_pages(token, api_version):
-    """User token orqali boshqariladigan sahifalar va ularning tokenlarini chiqaradi."""
+def fetch_pages(token, api_version, required=True):
+    """User token orqali boshqariladigan sahifalarni (id, nom, token) qaytaradi."""
+    global _quiet
     url = f"{GRAPH}/{api_version}/me/accounts"
-    rows = list(paginate(url, {"fields": "id,name,access_token", "limit": 100}, token))
-    if not rows:
+    _quiet = not required
+    try:
+        rows = list(paginate(url, {"fields": "id,name,access_token", "limit": 100}, token))
+    except SystemExit:
+        if required:
+            raise
+        return []  # Page token berilgan - sahifalar ro'yxatini olib bo'lmaydi, muammo emas
+    finally:
+        _quiet = False
+    if not rows and required:
         die("Hech qanday sahifa topilmadi. User token va pages_show_list ruxsatini tekshiring.")
+    return rows
+
+
+def list_pages(token, api_version):
+    """Sahifalar va ularning tokenlarini ekranga chiqaradi."""
+    rows = fetch_pages(token, api_version)
     print(f"\n{len(rows)} ta sahifa topildi:\n")
     for p in rows:
         print(f"  Nomi:  {p.get('name')}")
@@ -120,6 +140,68 @@ def fetch_messages(conv_id, token, api_version, cutoff, max_messages):
     return out
 
 
+def export_page(page_id, token, args, cutoff, out_path, page_name=None):
+    """Bitta sahifaning suhbatlarini yig'ib, JSON faylga yozadi."""
+    if page_name is None:
+        print(f"Sahifa:   {page_id}")
+    print(f"Inbox:    {args.platform}")
+    print(f"Davr:     {cutoff.date()} dan bugungacha ({args.months} oy)")
+
+    conv_url = f"{GRAPH}/{args.api_version}/{page_id}/conversations"
+    conv_params = {
+        "platform": args.platform,
+        "fields": "id,updated_time,message_count,participants,unread_count",
+        "limit": 50,
+    }
+
+    conversations = []
+    total_messages = 0
+
+    for i, conv in enumerate(paginate(conv_url, conv_params, token), 1):
+        updated = conv.get("updated_time")
+        if updated:
+            try:
+                ts = datetime.fromisoformat(updated.replace("Z", "+00:00"))
+            except ValueError:
+                ts = None
+            if ts and ts < cutoff:
+                # Suhbatlar yangilanish vaqti bo'yicha tartiblangan - keyingilari ham eski
+                break
+
+        msgs = fetch_messages(conv["id"], token, args.api_version,
+                              cutoff, args.max_messages)
+        if not msgs:
+            continue
+
+        conversations.append({
+            "conversation_id": conv["id"],
+            "updated_time": updated,
+            "message_count_total": conv.get("message_count"),
+            "unread_count": conv.get("unread_count"),
+            "participants": conv.get("participants", {}).get("data", []),
+            "messages": msgs,
+        })
+        total_messages += len(msgs)
+        print(f"  [{i}] {len(msgs)} xabar (jami {total_messages})", flush=True)
+
+    result = {
+        "page_id": page_id,
+        "page_name": page_name,
+        "platform": args.platform,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "period_from": cutoff.isoformat(),
+        "conversation_count": len(conversations),
+        "message_count": total_messages,
+        "conversations": conversations,
+    }
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=1)
+
+    print(f"  -> {len(conversations)} suhbat, {total_messages} xabar | {out_path}")
+    return result
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="Facebook Page / Instagram xabarlarini JSON faylga yuklab oladi.",
@@ -130,7 +212,10 @@ def main():
                     help="Access token. Yoki FB_TOKEN muhit o'zgaruvchisiga yozing.")
     ap.add_argument("--list-pages", action="store_true",
                     help="User token orqali sahifalar ro'yxati va ularning tokenlarini chiqarish.")
-    ap.add_argument("--page-id", help="Sahifa ID (masalan 137827949416647).")
+    ap.add_argument("--page-id",
+                    help="Sahifa ID. Bir nechtasini vergul bilan ajrating: ID1,ID2,ID3")
+    ap.add_argument("--all-pages", action="store_true",
+                    help="Barcha sahifalarni ketma-ket yuklaydi (User token kerak).")
     ap.add_argument("--platform", default="messenger", choices=["messenger", "instagram"],
                     help="Qaysi inbox. Default: messenger.")
     ap.add_argument("--months", type=int, default=6, help="Necha oylik tarix. Default: 6.")
@@ -148,73 +233,62 @@ def main():
         list_pages(args.token, args.api_version)
         return
 
-    if not args.page_id:
-        die("--page-id kerak. Avval --list-pages bilan ro'yxatni ko'ring.")
-
     cutoff = datetime.now(timezone.utc) - timedelta(days=30 * args.months)
-    out_path = args.out or f"messages_{args.page_id}_{args.platform}.json"
 
-    print(f"Sahifa:   {args.page_id}")
-    print(f"Inbox:    {args.platform}")
-    print(f"Davr:     {cutoff.date()} dan bugungacha ({args.months} oy)")
-    print(f"Natija:   {out_path}\n")
+    if args.all_pages:
+        pages = fetch_pages(args.token, args.api_version)
+        print(f"\n{len(pages)} ta sahifa topildi. Hammasi ketma-ket yuklanadi.\n")
+        done = []
+        for n, page in enumerate(pages, 1):
+            name = page.get("name", "?")
+            page_token = page.get("access_token")
+            print(f"\n{'=' * 60}\n[{n}/{len(pages)}] {name}  (ID {page['id']})")
+            if not page_token:
+                print("  Tashlab ketildi: bu sahifa uchun token berilmadi")
+                continue
+            out_path = f"messages_{page['id']}_{args.platform}.json"
+            res = export_page(page["id"], page_token, args, cutoff, out_path, name)
+            done.append((name, res["conversation_count"], res["message_count"], out_path))
 
-    conv_url = f"{GRAPH}/{args.api_version}/{args.page_id}/conversations"
-    conv_params = {
-        "platform": args.platform,
-        "fields": "id,updated_time,message_count,participants,unread_count",
-        "limit": 50,
-    }
+        print(f"\n{'=' * 60}\nYAKUNIY NATIJA\n")
+        for name, convs, msgs, path in done:
+            print(f"  {name}: {convs} suhbat, {msgs} xabar -> {path}")
+        total = sum(m for _, _, m, _ in done)
+        print(f"\nJami {len(done)} sahifa, {total} xabar.")
+        if total == 0:
+            print("\nHech qayerda xabar topilmadi. pages_messaging ruxsatini tekshiring.")
+        return
 
-    conversations = []
-    total_messages = 0
+    if not args.page_id:
+        die("--page-id yoki --all-pages kerak. Avval --list-pages bilan ro'yxatni ko'ring.")
 
-    for i, conv in enumerate(paginate(conv_url, conv_params, args.token), 1):
-        updated = conv.get("updated_time")
-        if updated:
-            try:
-                ts = datetime.fromisoformat(updated.replace("Z", "+00:00"))
-            except ValueError:
-                ts = None
-            if ts and ts < cutoff:
-                # Suhbatlar yangilanish vaqti bo'yicha tartiblangan - keyingilari ham eski
-                break
+    ids = [x.strip() for x in args.page_id.split(",") if x.strip()]
 
-        msgs = fetch_messages(conv["id"], args.token, args.api_version,
-                                 cutoff, args.max_messages)
-        if not msgs:
-            continue
+    # User token berilgan bo'lsa, har sahifaning o'z tokenini topib olamiz
+    known = {p["id"]: p for p in fetch_pages(args.token, args.api_version, required=False)}
 
-        conversations.append({
-            "conversation_id": conv["id"],
-            "updated_time": updated,
-            "message_count_total": conv.get("message_count"),
-            "unread_count": conv.get("unread_count"),
-            "participants": conv.get("participants", {}).get("data", []),
-            "messages": msgs,
-        })
-        total_messages += len(msgs)
-        print(f"  [{i}] {conv['id'][:24]}... -> {len(msgs)} xabar "
-              f"(jami {total_messages})", flush=True)
+    results = []
+    for n, pid in enumerate(ids, 1):
+        page = known.get(pid)
+        name = page.get("name") if page else None
+        token = page.get("access_token") if page else args.token
+        if len(ids) > 1:
+            print(f"\n{'=' * 60}\n[{n}/{len(ids)}] {name or pid}  (ID {pid})")
+        elif name:
+            print(f"Sahifa:   {name} (ID {pid})")
+        out_path = args.out if (args.out and len(ids) == 1) \
+            else f"messages_{pid}_{args.platform}.json"
+        results.append(export_page(pid, token, args, cutoff, out_path, name))
 
-    result = {
-        "page_id": args.page_id,
-        "platform": args.platform,
-        "exported_at": datetime.now(timezone.utc).isoformat(),
-        "period_from": cutoff.isoformat(),
-        "conversation_count": len(conversations),
-        "message_count": total_messages,
-        "conversations": conversations,
-    }
+    if len(ids) > 1:
+        print(f"\n{'=' * 60}\nYAKUNIY NATIJA\n")
+        for r in results:
+            print(f"  {r['page_name'] or r['page_id']}: "
+                  f"{r['conversation_count']} suhbat, {r['message_count']} xabar")
 
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=1)
-
-    print(f"\nTayyor: {len(conversations)} suhbat, {total_messages} xabar")
-    print(f"Fayl:   {os.path.abspath(out_path)}")
-    if not conversations:
-        print("\nOgohlantirish: hech qanday suhbat topilmadi. Sabablari:")
-        print("  - Bu sahifada Messenger yozishmalari yo'q")
+    if sum(r["message_count"] for r in results) == 0:
+        print("\nOgohlantirish: hech qanday xabar topilmadi. Sabablari:")
+        print("  - Bu sahifalarda Messenger yozishmalari yo'q")
         print("  - Token'da pages_messaging ruxsati yo'q")
         print("  - --platform instagram ni sinab ko'ring")
 
