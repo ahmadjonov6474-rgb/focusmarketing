@@ -70,6 +70,9 @@ python3 fb_messages_export.py --page-id ID1,ID2,ID3 --token "USER_TOKEN"
 
 # Barcha sahifalar
 python3 fb_messages_export.py --all-pages --token "USER_TOKEN"
+
+# To'xtab qolgan yurishni davom ettirish (token muddati tugaganda)
+python3 fb_messages_export.py --page-id ID --token "YANGI_TOKEN" --resume
 ```
 
 ## Tez-tez uchraydigan xatolar
@@ -80,6 +83,11 @@ python3 fb_messages_export.py --all-pages --token "USER_TOKEN"
 | `pages_messaging ruxsati yo'q` | 2-qadamda ruxsatni belgilashni unutgansiz |
 | `Hech qanday suhbat topilmadi` | Sahifada Messenger yozishmasi yo'q, yoki Page token emas User token ishlatilgan |
 | `(#200)` | Sahifaga admin huquqingiz yo'q |
+| `(#10) Requested Page Does Not Match` | Page token emas, User token ishlatilgan |
+
+Har 100 suhbatda natija faylga saqlanadi. Token muddati tugab yoki limitga
+urilib to'xtasa, yangi token olib `--resume` bilan qayta ishga tushiring —
+yuklangan suhbatlar qaytadan so'ralmaydi.
 
 ## Maxfiylik
 

@@ -140,12 +140,42 @@ def fetch_messages(conv_id, token, api_version, cutoff, max_messages):
     return out
 
 
+def save(result, out_path):
+    """Natijani faylga yozadi (har safar to'liq qayta yoziladi)."""
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=1)
+
+
+def load_done(out_path):
+    """Oldingi yurishdan qolgan suhbatlarni o'qiydi (--resume uchun)."""
+    if not os.path.exists(out_path):
+        return []
+    try:
+        with open(out_path, encoding="utf-8") as f:
+            return json.load(f).get("conversations", [])
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
 def export_page(page_id, token, args, cutoff, out_path, page_name=None):
-    """Bitta sahifaning suhbatlarini yig'ib, JSON faylga yozadi."""
+    """Bitta sahifaning suhbatlarini yig'ib, JSON faylga yozadi.
+
+    Har CHECKPOINT suhbatda fayl yangilanadi, shuning uchun token muddati
+    tugasa yoki limitga urilsa ham yig'ilgan ish saqlanib qoladi.
+    """
+    CHECKPOINT = 100
+
     if page_name is None:
         print(f"Sahifa:   {page_id}")
     print(f"Inbox:    {args.platform}")
     print(f"Davr:     {cutoff.date()} dan bugungacha ({args.months} oy)")
+
+    conversations = load_done(out_path) if args.resume else []
+    seen = {c["conversation_id"] for c in conversations}
+    total_messages = sum(len(c["messages"]) for c in conversations)
+    if conversations:
+        print(f"Davomi:   {len(conversations)} suhbat allaqachon yuklangan, "
+              f"ular o'tkazib yuboriladi")
 
     conv_url = f"{GRAPH}/{args.api_version}/{page_id}/conversations"
     conv_params = {
@@ -154,50 +184,64 @@ def export_page(page_id, token, args, cutoff, out_path, page_name=None):
         "limit": 50,
     }
 
-    conversations = []
-    total_messages = 0
+    def build():
+        return {
+            "page_id": page_id,
+            "page_name": page_name,
+            "platform": args.platform,
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "period_from": cutoff.isoformat(),
+            "conversation_count": len(conversations),
+            "message_count": total_messages,
+            "conversations": conversations,
+        }
 
-    for i, conv in enumerate(paginate(conv_url, conv_params, token), 1):
-        updated = conv.get("updated_time")
-        if updated:
-            try:
-                ts = datetime.fromisoformat(updated.replace("Z", "+00:00"))
-            except ValueError:
-                ts = None
-            if ts and ts < cutoff:
-                # Suhbatlar yangilanish vaqti bo'yicha tartiblangan - keyingilari ham eski
-                break
+    try:
+        for i, conv in enumerate(paginate(conv_url, conv_params, token), 1):
+            updated = conv.get("updated_time")
+            if updated:
+                try:
+                    ts = datetime.fromisoformat(updated.replace("Z", "+00:00"))
+                except ValueError:
+                    ts = None
+                if ts and ts < cutoff:
+                    # Suhbatlar yangilanish vaqti bo'yicha tartiblangan - keyingilari ham eski
+                    break
 
-        msgs = fetch_messages(conv["id"], token, args.api_version,
-                              cutoff, args.max_messages)
-        if not msgs:
-            continue
+            if conv["id"] in seen:
+                continue
 
-        conversations.append({
-            "conversation_id": conv["id"],
-            "updated_time": updated,
-            "message_count_total": conv.get("message_count"),
-            "unread_count": conv.get("unread_count"),
-            "participants": conv.get("participants", {}).get("data", []),
-            "messages": msgs,
-        })
-        total_messages += len(msgs)
-        print(f"  [{i}] {len(msgs)} xabar (jami {total_messages})", flush=True)
+            msgs = fetch_messages(conv["id"], token, args.api_version,
+                                  cutoff, args.max_messages)
+            if not msgs:
+                continue
 
-    result = {
-        "page_id": page_id,
-        "page_name": page_name,
-        "platform": args.platform,
-        "exported_at": datetime.now(timezone.utc).isoformat(),
-        "period_from": cutoff.isoformat(),
-        "conversation_count": len(conversations),
-        "message_count": total_messages,
-        "conversations": conversations,
-    }
+            conversations.append({
+                "conversation_id": conv["id"],
+                "updated_time": updated,
+                "message_count_total": conv.get("message_count"),
+                "unread_count": conv.get("unread_count"),
+                "participants": conv.get("participants", {}).get("data", []),
+                "messages": msgs,
+            })
+            total_messages += len(msgs)
+            print(f"  [{i}] {len(msgs)} xabar (jami {total_messages})", flush=True)
 
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=1)
+            if len(conversations) % CHECKPOINT == 0:
+                save(build(), out_path)
+                print(f"  ... {len(conversations)} suhbat saqlandi", flush=True)
 
+    except (SystemExit, KeyboardInterrupt):
+        # Token o'ldi, limitga urildi yoki to'xtatildi - yig'ilgani saqlanadi
+        save(build(), out_path)
+        print(f"\nTo'xtadi, lekin {len(conversations)} suhbat saqlandi: {out_path}")
+        print("Yangi token olib, shu buyruqni --resume qo'shib qayta ishga tushiring:")
+        print(f"  python fb_messages_export.py --page-id {page_id} "
+              f"--token $t --resume")
+        raise
+
+    result = build()
+    save(result, out_path)
     print(f"  -> {len(conversations)} suhbat, {total_messages} xabar | {out_path}")
     return result
 
@@ -214,6 +258,9 @@ def main():
                     help="User token orqali sahifalar ro'yxati va ularning tokenlarini chiqarish.")
     ap.add_argument("--page-id",
                     help="Sahifa ID. Bir nechtasini vergul bilan ajrating: ID1,ID2,ID3")
+    ap.add_argument("--resume", action="store_true",
+                    help="Oldingi yurishni davom ettiradi - mavjud fayldagi "
+                         "suhbatlar qayta yuklanmaydi.")
     ap.add_argument("--all-pages", action="store_true",
                     help="Barcha sahifalarni ketma-ket yuklaydi (User token kerak).")
     ap.add_argument("--platform", default="messenger", choices=["messenger", "instagram"],
