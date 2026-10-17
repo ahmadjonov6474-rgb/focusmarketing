@@ -40,7 +40,7 @@ def vcodec(preview):
             "-pix_fmt", "yuv420p", "-profile:v", "high"]
 
 
-def push_in(W, H, fps, dur, zoom, orqaga=False):
+def push_in(W, H, fps, dur, zoom, orqaga=False, punch_amt=0.0):
     """Kadr harakati: yaqinlashuv yoki orqaga chekinish, easing bilan.
 
     Chiziqli zoom ko'zga "o'lik" ko'rinadi, shuning uchun ease-out egri
@@ -53,18 +53,20 @@ def push_in(W, H, fps, dur, zoom, orqaga=False):
     nf = max(2, int(round(dur * fps)))
     p = f"(on/{nf})"
     egri = (f"pow(1-{p},3)" if orqaga else f"(1-pow(1-{p},3))")
+    # punch: kesim boshida kadr sakraydi va ~0.5 s da joyiga qaytadi
+    punch = f"+{punch_amt:.3f}*exp(-7*on/{fps})" if punch_amt > 0 else ""
     return (f",scale=iw*1.6:-2:flags=bicubic,"
-            f"zoompan=z='1+{zoom:.4f}*{egri}':d=1:"
+            f"zoompan=z='1+{zoom:.4f}*{egri}{punch}':d=1:"
             f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
             f"s={W}x{H}:fps={fps}")
 
 
-def kes_klip(cam, s, e, W, H, fps, preview, out, zoom=0.0, orqaga=False):
+def kes_klip(cam, s, e, W, H, fps, preview, out, zoom=0.0, orqaga=False, punch=0.0):
     """Bitta klipni manbadan kesib, kadrlab, kodlaydi (video only)."""
     ss = s + cam.get("offset", 0.0)
     vf = framing(cam, W, H, fps)
     if zoom > 0:
-        vf += push_in(W, H, fps, e - s, zoom, orqaga)
+        vf += push_in(W, H, fps, e - s, zoom, orqaga, punch)
     cmd = (["ffmpeg", "-y", "-v", "error", "-ss", f"{ss:.3f}",
             "-i", cam["fayl"], "-t", f"{e - s:.3f}", "-an",
             "-vf", vf]
@@ -96,6 +98,8 @@ def main():
     p.add_argument("--preview", action="store_true",
                    help="tez, past sifatli ko'rik")
     p.add_argument("--ish", help="vaqtinchalik papka (standart: temp)")
+    p.add_argument("--punch", type=float, default=0.0,
+                   help="kesim boshida kadr sakrashi (masalan 0.08)")
     p.add_argument("--zoom", type=float, default=0.0,
                    help="har klipda sekin yaqinlashuv (masalan 0.05 = 5%%)")
     p.add_argument("--dry-run", action="store_true")
@@ -123,7 +127,8 @@ def main():
             f = os.path.join(ish, f"seg{i:03d}.mp4")
             # toq klip yaqinlashadi, juft klip chekinadi
             kes_klip(cams[c], s, e, W, H, fps, args.preview, f,
-                     args.zoom, orqaga=(i % 2 == 1))
+                     args.zoom, orqaga=(i % 2 == 1),
+                     punch=(args.punch if i > 0 else 0.0))
             segs.append(f)
             print(f"  [{i + 1:3d}/{len(klips)}] kamera {c}  "
                   f"{s:7.2f}-{e:7.2f}  ({e - s:5.2f}s)", flush=True)

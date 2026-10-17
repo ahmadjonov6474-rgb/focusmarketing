@@ -104,7 +104,7 @@ for(const e of SEN){
 
   if(e.tur==='chip' || e.tur==='hook'){
     // kirish: spring bilan kattalashadi va ko'tariladi; chiqish: kichrayib so'nadi
-    const s = pk<1 ? 0.84+0.16*spring(pk) : 1;
+    const s = pk<1 ? 0.72+0.28*spring(pk) : 1;
     const y = pk<1 ? 46*(1-easeOutCubic(pk)) : 0;
     const a = clamp(pk*1.6) * (pc<1 ? easeInCubic(pc) : 1);
     const sc = s * (pc<1 ? 0.94+0.06*pc : 1);
@@ -134,7 +134,7 @@ for(const e of SEN){
     // karta: oldin kadr qorayadi, keyin oq chaqnash, so'ng fon joyiga tushadi
     const dip = clamp((T-(e.start-0.08))/0.08) * (1-clamp((T-e.start)/0.02));
     const flash = T < e.start ? 0 : 1-clamp((T-e.start)/0.22);
-    const fonS = 1.06-0.06*easeOutCubic(clamp((T-e.start)/0.9));
+    const fonS = 1.12-0.12*easeOutCubic(clamp((T-e.start)/0.9));
     const st=(i)=>clamp((T-e.start-0.10-0.12*i)/0.34);
     const bandW = 100*easeOutCubic(st(1));
     const chiplar=(e.chiplar||[]).map((c,i)=>{
@@ -156,7 +156,7 @@ for(const e of SEN){
         ${e.quote?`<div class="k-quote" style="opacity:${qp};transform:translateY(${30*(1-easeOutBack(qp||0.0001))}px) scale(${0.96+0.04*qp})">${esc(e.quote)}</div>`:''}
       </div>
       ${dip>0.001?`<div class="qora" style="opacity:${0.42*dip}"></div>`:''}
-      ${flash>0.001?`<div class="oq" style="opacity:${0.62*easeInCubic(flash)}"></div>`:''}`;
+      ${flash>0.001?`<div class="oq" style="opacity:${0.88*easeInCubic(flash)}"></div>`:''}`;
   }
   sahna.appendChild(el);
 }
