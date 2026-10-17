@@ -11,7 +11,10 @@ OUT="${2:?chiqish fayl kerak}"
 MUSIC="${3:-}"
 
 # Nutq zanjiri: gul-gul tozalash -> siqish -> yumshoq ravnaq
-VOICE="highpass=f=85,afftdn=nr=10:nf=-32,acompressor=threshold=-20dB:ratio=4:attack=5:release=140:makeup=2,deesser=i=0.4"
+# afade — boshi so'z o'rtasidan boshlansa (yozuv kech yoqilgan bo'lsa)
+# qisqa kirish silliqlashtiradi, aks holda "chirt" etib boshlanadi.
+FADE="${FADE:-0.05}"
+VOICE="highpass=f=85,afftdn=nr=10:nf=-32,acompressor=threshold=-20dB:ratio=4:attack=5:release=140:makeup=2,deesser=i=0.4,afade=t=in:st=0:d=${FADE}"
 
 if [[ -n "$MUSIC" ]]; then
   echo "Musiqa bilan: $MUSIC"
