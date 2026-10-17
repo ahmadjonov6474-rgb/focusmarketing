@@ -16,25 +16,37 @@ bitta manbadan olinadi, shuning uchun tembr sakramaydi.
 ```bash
 cd montaj
 
+# 0. Kamera burilishi va mezzanine (bir marta)
+#    Sony XAVC rotatsiya metadatasini yozmaydi: material yonboshlatib
+#    olingan bo'lsa kadr 90° burilgan chiqadi. `burilish` shuni to'g'rilaydi.
+#    Mezzanine = burilgan + 1080x1920 ga keltirilgan nusxa; keyingi barcha
+#    kesimlar 4K o'rniga shundan yig'iladi, ya'ni ancha tez.
+ffmpeg -i work/camA.mp4 -vf "transpose=2,scale=-2:1920,crop=1080:1920,setsar=1,fps=25" \
+       -c:v libx264 -preset veryfast -crf 14 -c:a pcm_s16le work/mezA.mp4
+
 # 1. Ikki kamerani sinxronlash
 bin/sync.py work/camA.mp4 work/camB.mp4
-# -> offset_b=3.700  ishonch=17.8   (ishonch < 6 bo'lsa natija shubhali)
+# -> offset_b=4.868  ishonch=10.4   (ishonch < 6 bo'lsa natija shubhali)
 
 # 2. Nutq va pauzalarni ajratish (ovozi yaxshi kameradan)
 bin/speech.py work/camA.mp4 -o work/speech.json
 
-# 3. Kesim rejasi (tanlov = hikoyaning qoladigan bo'laklari)
-bin/edl.py work/speech.json -o work/edl.json --offset-b 3.700 \
-           --tanlov work/tanlov.json --maqsad 60
+# 3. Nutqni matnga aylantirish (hikoyani tanlash uchun)
+bin/transkript.py work/camA.mp4 work/speech.json -o work/transcript.json --til uz
 
-# 4. Yig'ish
+# 4. Kesim rejasi — storytelling presetida (referens-2 ritmi)
+bin/edl.py work/speech.json -o work/edl.json --offset-b 4.868 \
+           --tanlov work/tanlov.json --maqsad 60 \
+           --pauza-qoldiq 0.50 --shot-min 2.0 --shot-max 9.0 --hook-s 0
+
+# 5. Yig'ish
 bin/build.py work/cams.json work/edl.json -o work/cut.mp4 --preview   # tez ko'rik
 bin/build.py work/cams.json work/edl.json -o work/cut.mp4             # to'liq sifat
 
-# 5. Subtitr (transkript manba vaqtida bo'lishi kerak)
+# 6. Subtitr (transkript manba vaqtida bo'lishi kerak)
 bin/subs.py work/transcript.json work/edl.json -o work/subs.ass
 
-# 6. Ovoz masteringi
+# 7. Ovoz masteringi
 bin/master.sh work/cut.mp4 work/final.mp4 work/music.mp3
 ```
 
@@ -43,15 +55,18 @@ bin/master.sh work/cut.mp4 work/final.mp4 work/music.mp3
 ```json
 {
   "kameralar": [
-    {"fayl": "work/camA.mp4", "x": 0.5, "zoom": 1.00, "offset": 0.0},
-    {"fayl": "work/camB.mp4", "x": 0.5, "zoom": 1.12, "offset": 3.700}
+    {"fayl": "work/camA.mp4", "burilish": 2, "x": 0.5, "y": 0.5, "zoom": 1.00, "offset": 0.000},
+    {"fayl": "work/camB.mp4", "burilish": 2, "x": 0.5, "y": 0.5, "zoom": 1.00, "offset": 4.868}
   ],
   "ovoz_manbai": 0,
-  "w": 1080, "h": 1920, "fps": 30
+  "w": 1080, "h": 1920, "fps": 25
 }
 ```
 
+- `burilish` — 0 kerak emas, 1 soat yo'nalishi, 2 teskari. Kesishdan OLDIN
+  qo'llanadi. Mezzanine ishlatilsa 0 beriladi (burilish allaqachon bajarilgan)
 - `x` — 9:16 ga kesishda gorizontal markaz (0 chap, 1 o'ng)
+- `y` — vertikal markaz (0 tepa, 1 past); tepada ortiqcha bo'sh joy bo'lsa oshiriladi
 - `zoom` — qo'shimcha yaqinlashtirish; ikkinchi kameraga biroz ko'proq
   bersangiz rakurslar farqi kuchayadi
 - `offset` — `sync.py` bergan qiymat

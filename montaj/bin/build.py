@@ -7,13 +7,23 @@ import argparse, json, subprocess, sys
 
 
 def framing(idx, cam, W, H):
-    """Kadrni 9:16 ga kesadi: balandlik bo'yicha o'lchab, x bo'yicha qirqadi."""
+    """Kadrni 9:16 ga keltiradi.
+
+    `burilish` — kamera yonboshlatib olingan bo'lsa (Sony XAVC rotatsiya
+    metadatasini yozmaydi): 1 = soat yo'nalishi, 2 = teskari. Burilish
+    ENG BIRINCHI qo'llanadi, aks holda kesish noto'g'ri o'qqa tushadi.
+    `y` — vertikal markaz (0 yuqori, 1 past); kadrda ortiqcha tepa bo'sh
+    joy bo'lsa pastga suriladi.
+    """
     zoom = cam.get("zoom", 1.0)
     xf = cam.get("x", 0.5)
+    yf = cam.get("y", 0.5)
+    rot = int(cam.get("burilish", 0))
     h = int(H * zoom)
     h += h % 2
-    return (f"scale=-2:{h}:flags=lanczos,"
-            f"crop={W}:{H}:(iw-{W})*{xf}:(ih-{H})/2,setsar=1")
+    pre = f"transpose={rot}," if rot else ""
+    return (f"{pre}scale=-2:{h}:flags=lanczos,"
+            f"crop={W}:{H}:(iw-{W})*{xf}:(ih-{H})*{yf},setsar=1")
 
 
 def build_filter(edl, cams, W, H, fps, audio_src):

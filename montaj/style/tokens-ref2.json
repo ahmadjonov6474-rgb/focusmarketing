@@ -1,0 +1,28 @@
+{
+  "_manba": "1cb7e559-reference2.mp4 — hikoya intervyusi (43.3 s, 720x1280, 30 fps)",
+  "_nima_uchun": "Referens-1 kurs sotuvi edi va ritmi tez. Bu referens — aynan storytelling. Shuning uchun RITM va TUZILMA shu yerdan, DIZAYN tokenlari esa tokens.json dan (u bizning kechki, ko'kish materialimizga mos).",
+  "ritm": {
+    "kadrlar_soni": 5,
+    "shot_uzunliklari_s": [11.4, 8.4, 10.1, 6.3, 6.9],
+    "shot_ortacha_s": 8.6,
+    "shot_min_s": 6.3,
+    "shot_max_s": 11.4,
+    "_xulosa": "Uzun kadr. Kesim kam. Hikoya nafas oladi — tez jump-cut yo'q."
+  },
+  "nutq": {
+    "nutq_ulushi": 0.96,
+    "_izoh": "43.2 s dan 41.4 s gapiriladi — deyarli uzluksiz nutq, bo'sh joy yo'q."
+  },
+  "ovoz": { "LUFS": -14.2, "LRA": 3.4 },
+  "tuzilma": {
+    "hook_sarlavha": "birinchi kadr ustida tepada katta savol-sarlavha (NIMAGA BU MUHIM?)",
+    "grafika_kartalari": "hikoyaning kalit nuqtalarida TO'LIQ EKRAN karta — gapirilayotgan narsani ko'rsatadi (qizil karta: bitta kalit so'z; to'q karta: illyustratsiya + izoh)",
+    "_xulosa": "Kadr almashinuvi o'rnida grafika ishlaydi: kesim kam bo'lsa ham video zerikarli bo'lmaydi."
+  },
+  "rang_namuna": {
+    "intervyu_kadri": ["#000000", "#181818", "#907860", "#604830"],
+    "karta_qizil": ["#900000", "#780000", "#480000", "#F0F0F0"],
+    "karta_toq": ["#180000", "#301800", "#483018"],
+    "_izoh": "Issiq, ichki yoritilgan interyer. Bizning material — kechki tashqarida, sovuq ko'k. Shuning uchun BU ranglar ko'chirilmaydi."
+  }
+}

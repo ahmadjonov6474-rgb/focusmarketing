@@ -3,24 +3,49 @@
 Storytelling: shifokor o'zi ko'rgan eng og'ir holatni so'zlab beradi.
 Maqsadli davomiylik — **maksimum 60 s**.
 
-Referens ritmi shu janrga moslandi. Referensning *grafikalari* ko'chirilmaydi
-(u kurs sotuvi edi — Inson/AI ustunlari, agentlar diagrammasi, $250 narx
-stikeri bu yerga to'g'ri kelmaydi). Ko'chiriladigani — **dizayn tizimi**
-(ranglar, shrift, pill subtitr, karta uslubi) va **kesim ritmi**.
+**Ikkita referens bor va ular bir xil emas:**
+
+| | Referens-1 (kurs sotuvi) | Referens-2 (storytelling) |
+|---|---|---|
+| Kadr o'rtacha | 2.4 s | **8.6 s** |
+| Kesim | ko'p, tez | kam, nafas oladi |
+| Grafika | sotuv blokiari, narx stikeri | hikoyani ko'rsatadigan kartalar |
+
+Bizning janr — **storytelling**, shuning uchun ritm **referens-2** dan olinadi
+(`style/tokens-ref2.json`). Referens-1 dan faqat **dizayn tokenlari** qoladi
+(`style/tokens.json`: to'q ko'k palitra, pill subtitr) — ular bizning kechki,
+sovuq ko'k materialimizga mos tushadi. Referens-2 ning issiq jigarrang
+interyer ranglari esa ko'chirilmaydi.
+
+**Hech qaysi referens nusxa ko'chirilmaydi.** Ulardan faqat o'lchov olinadi,
+montaj esa shu videodagi hikoyaga qarab quriladi.
 
 ## Beat tuzilmasi
 
 | # | Beat | Vaqt | Kadr uzunligi | Vazifasi |
 |---|---|---|---|---|
-| 1 | **Hook** | 0–4 s | 1.4–1.8 s | Eng shok detal: bemor qanday holatda kelgani. Bitta jumla, hech qanday kirish so'zisiz |
-| 2 | **Kontekst** | 4–12 s | 2.5–3 s | Kim, qachon, qanday kelgan |
-| 3 | **Og'irlashuv** | 12–28 s | 3–4 s | Qanchalik jiddiy edi, nima xavf ostida edi |
-| 4 | **Burilish** | 28–42 s | 3–4 s | Qanday qaror qabul qilindi, nima qilindi |
-| 5 | **Natija** | 42–54 s | 4–5 s | Oqibat — eng kuchli emotsional nuqta, sekinroq ritm |
-| 6 | **Xulosa** | 54–60 s | 2–3 s | Tomoshabin uchun xulosa yoki murojaat |
+| 1 | **Hook** | 0–6 s | 5–7 s | Eng kuchli jumla, kirish so'zisiz. Bitta uzun kadr — gap bo'linmaydi |
+| 2 | **Kontekst** | 6–18 s | 5–7 s | Kim, qachon, qanday kelgan |
+| 3 | **Og'irlashuv** | 18–34 s | 6–8 s | Qanchalik jiddiy edi, nima xavf ostida edi |
+| 4 | **Burilish** | 34–46 s | 6–8 s | Qanday qaror qabul qilindi |
+| 5 | **Natija** | 46–56 s | 6–9 s | Oqibat — eng kuchli nuqta, eng sekin ritm |
+| 6 | **Xulosa** | 56–60 s | 4 s | Tomoshabin uchun xulosa |
 
-Ritm mantig'i: boshi tez (diqqatni ushlash), o'rtasi barqaror,
-natija sekin (gap singib ulgursin), yakuni qisqa.
+Ritm mantig'i (referens-2 dan): kadr uzun, kesim faqat **kerak bo'lganda** —
+ya'ni uzun pauza yoki tashlangan bo'lak joyida. Har kesimda kamera almashadi,
+shuning uchun sakrash ko'rinmaydi.
+
+### `edl.py` uchun storytelling presetlari
+
+```bash
+--pauza-qoldiq 0.50   # 0.5 s gacha pauza SAQLANADI (nafas) -> kesim kam
+--shot-min     2.00
+--shot-max     9.00   # uzun kadrga ruxsat (referens-2: 11.4 s gacha)
+--hook-s       0      # boshida tez montaj zonasi YO'Q
+```
+
+Eski (referens-1) tez presetlari: `--pauza-qoldiq 0.18 --shot-max 5.6
+--hook-s 3 --hook-shot 1.6` — sotuv/reklama kreativi uchun qoladi.
 
 ## Muhimlik darajalari (`tanlov.json` uchun)
 
