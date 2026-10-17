@@ -57,6 +57,10 @@ def guruhla(cues, max_belgi):
 
 
 def ass(cues, W, H, kegl, x, y, rang):
+    """Uslub maydonlari tartibi (chalkashish oson):
+    ... BorderStyle=1, Outline=0, Shadow=4, Alignment=7 (tepa-chap),
+    MarginL=x, MarginR=60, MarginV=y (tepadan masofa).
+    Alignment 7 bo'lgani uchun MarginV TEPADAN o'lchanadi."""
     head = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {W}
@@ -66,7 +70,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Soz,Inter,{kegl},{rang},{rang},&H00000000,&H00000000,-1,0,0,0,100,100,2,0,1,0,4,{x},60,{y},1
+Style: Soz,Inter,{kegl},{rang},{rang},&H00000000,&H00000000,-1,0,0,0,100,100,2,0,1,0,4,7,{x},60,{y},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
