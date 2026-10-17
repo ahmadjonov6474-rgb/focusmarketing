@@ -40,25 +40,31 @@ def vcodec(preview):
             "-pix_fmt", "yuv420p", "-profile:v", "high"]
 
 
-def push_in(W, H, fps, dur, zoom):
-    """Kadrga sekin yaqinlashuv — statik planga jon kiritadi.
+def push_in(W, H, fps, dur, zoom, orqaga=False):
+    """Kadr harakati: yaqinlashuv yoki orqaga chekinish, easing bilan.
+
+    Chiziqli zoom ko'zga "o'lik" ko'rinadi, shuning uchun ease-out egri
+    chizig'i ishlatiladi: boshida tezroq, oxirida sekinlashadi. Planlar
+    navbatma-navbat yaqinlashadi va chekinadi — bir xillik yo'qoladi.
 
     Jitterni kamaytirish uchun avval 1.6x ga kattalashtiriladi, keyin
-    zoompan 1080x1920 ga qaytaradi: shunda siljish subpiksel bo'ladi.
+    zoompan 1080x1920 ga qaytaradi: siljish subpiksel bo'ladi.
     """
     nf = max(2, int(round(dur * fps)))
+    p = f"(on/{nf})"
+    egri = (f"pow(1-{p},3)" if orqaga else f"(1-pow(1-{p},3))")
     return (f",scale=iw*1.6:-2:flags=bicubic,"
-            f"zoompan=z='1+{zoom:.4f}*on/{nf}':d=1:"
+            f"zoompan=z='1+{zoom:.4f}*{egri}':d=1:"
             f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
             f"s={W}x{H}:fps={fps}")
 
 
-def kes_klip(cam, s, e, W, H, fps, preview, out, zoom=0.0):
+def kes_klip(cam, s, e, W, H, fps, preview, out, zoom=0.0, orqaga=False):
     """Bitta klipni manbadan kesib, kadrlab, kodlaydi (video only)."""
     ss = s + cam.get("offset", 0.0)
     vf = framing(cam, W, H, fps)
     if zoom > 0:
-        vf += push_in(W, H, fps, e - s, zoom)
+        vf += push_in(W, H, fps, e - s, zoom, orqaga)
     cmd = (["ffmpeg", "-y", "-v", "error", "-ss", f"{ss:.3f}",
             "-i", cam["fayl"], "-t", f"{e - s:.3f}", "-an",
             "-vf", vf]
@@ -115,7 +121,9 @@ def main():
         segs = []
         for i, (s, e, c) in enumerate(klips):
             f = os.path.join(ish, f"seg{i:03d}.mp4")
-            kes_klip(cams[c], s, e, W, H, fps, args.preview, f, args.zoom)
+            # toq klip yaqinlashadi, juft klip chekinadi
+            kes_klip(cams[c], s, e, W, H, fps, args.preview, f,
+                     args.zoom, orqaga=(i % 2 == 1))
             segs.append(f)
             print(f"  [{i + 1:3d}/{len(klips)}] kamera {c}  "
                   f"{s:7.2f}-{e:7.2f}  ({e - s:5.2f}s)", flush=True)
