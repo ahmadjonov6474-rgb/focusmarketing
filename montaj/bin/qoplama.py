@@ -1,47 +1,61 @@
 #!/usr/bin/env python3
-"""Subtitr va grafika kartalarini videoga qo'yadi (yoqib yozadi).
+"""Subtitr va grafikalarni videoga yoqib yozadi, animatsiya bilan.
 
-Referens-2 mantig'i: kadr uzun, kesim kam, lekin hikoyaning kalit
-nuqtalarida TO'LIQ EKRAN karta chiqadi — shunda video zerikarli bo'lmaydi.
-Hook kartasi esa shaffof: video ustida, tepada turadi.
+Grafikalar `karta2.py` bergan rejadan olinadi: har element bir nechta
+HOLAT (PNG) dan iborat bo'ladi va ular ketma-ket chiqadi — shunda matn
+bosqichma-bosqich "yozilib borgandek" ko'rinadi (referens-2 dagidek).
 
-Kartalar vaqti CHIQISH (montajdan keyingi) vaqtida beriladi.
+Animatsiya turlari:
+  pastdan  — element pastdan sirg'alib chiqadi (0.25 s)
+  yo'q     — darhol paydo bo'ladi (kartalar uchun; referensda ham shunday)
 """
 import argparse, json, os, subprocess, sys
+
+SLIDE = 0.25     # sirg'alish davomiyligi
+SILJISH = 260    # necha piksel pastdan ko'tariladi
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("video")
     p.add_argument("-o", "--out", required=True)
-    p.add_argument("--subs", help="ASS fayl")
-    p.add_argument("--kartalar", help="kartalar JSON (start/end chiqish vaqtida)")
-    p.add_argument("--png", default="work/kartalar", help="PNG papkasi")
+    p.add_argument("--subs", help="ASS fayl (chiqish vaqtida)")
+    p.add_argument("--reja", help="karta2.py bergan reja.json")
     p.add_argument("--crf", type=int, default=18)
-    p.add_argument("--preset", default="slow")
+    p.add_argument("--preset", default="medium")
     p.add_argument("--dry-run", action="store_true")
     a = p.parse_args()
 
-    kartalar = json.load(open(a.kartalar)) if a.kartalar else []
-    fayllar = sorted(os.listdir(a.png)) if kartalar else []
-    if kartalar and len(fayllar) != len(kartalar):
-        raise SystemExit(f"XATO: {len(kartalar)} karta, {len(fayllar)} PNG")
+    reja = json.load(open(a.reja)) if a.reja else []
 
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "warning", "-stats",
            "-i", a.video]
-    for f in fayllar:
-        cmd += ["-loop", "1", "-i", os.path.join(a.png, f)]
+    for e in reja:
+        cmd += ["-loop", "1", "-i", e["png"]]
 
     zanjir, oqim = [], "0:v"
     if a.subs:
-        # ASS ichidagi vaqtlar allaqachon chiqish vaqtida (subs.py ko'chirgan)
         zanjir.append(f"[{oqim}]subtitles={a.subs}[vs]")
         oqim = "vs"
-    for i, k in enumerate(kartalar, 1):
+
+    # bir element ichidagi birinchi holatgina sirg'aladi
+    birinchi = {}
+    for e in reja:
+        kalit = os.path.basename(e["png"])[:2]
+        birinchi.setdefault(kalit, e["start"])
+
+    for i, e in enumerate(reja, 1):
         yangi = f"v{i}"
+        s, t = e["start"], e["end"]
+        kalit = os.path.basename(e["png"])[:2]
+        if e.get("animatsiya") == "pastdan" and abs(birinchi[kalit] - s) < 1e-6:
+            y = (f"if(lt(t-{s:.3f},{SLIDE}),"
+                 f"{SILJISH}*(1-(t-{s:.3f})/{SLIDE}),0)")
+        else:
+            y = "0"
         zanjir.append(
-            f"[{oqim}][{i}:v]overlay=0:0:"
-            f"enable='between(t,{k['start']:.3f},{k['end']:.3f})'[{yangi}]")
+            f"[{oqim}][{i}:v]overlay=x=0:y='{y}':"
+            f"enable='between(t,{s:.3f},{t:.3f})'[{yangi}]")
         oqim = yangi
 
     fc = ";".join(zanjir) if zanjir else None
@@ -53,11 +67,9 @@ def main():
             "-crf", str(a.crf), "-pix_fmt", "yuv420p", "-profile:v", "high",
             "-c:a", "copy", "-shortest", a.out]
 
-    print(f"Subtitr: {'ha' if a.subs else 'yo\'q'}, kartalar: {len(kartalar)}")
-    for k in kartalar:
-        print(f"  {k['start']:6.2f}-{k['end']:6.2f}  {k['tur']:5s}  {k['asos']}")
+    print(f"Subtitr: {'ha' if a.subs else 'yo\'q'}, grafika holatlari: {len(reja)}")
     if a.dry_run:
-        print("\n" + " ".join(cmd[:6]) + " ... " + a.out)
+        print(" ".join(cmd[:6]) + " ... " + a.out)
         return 0
     return subprocess.run(cmd).returncode
 
