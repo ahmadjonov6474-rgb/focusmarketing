@@ -1,36 +1,43 @@
 {
-  "_manba": "1cb7e559-reference2.mp4 dan piksel darajasida o'lchangan (720x1280 -> 1080x1920 uchun 1.5x)",
-  "rang": {
-    "qizil_yorqin": "#C8181B",
-    "qizil":        "#8E0A0C",
-    "qizil_toq":    "#4A0003",
-    "tog_1":        "#3A0002",
-    "tog_2":        "#210001",
-    "oq":           "#FFFFFF",
-    "pushti_oq":    "#F7DADA",
-    "amber":        "#F2C14E",
-    "setka":        "rgba(255,255,255,0.045)"
-  },
-  "shrift": {
-    "oila": "Inter",
-    "sarlavha": "900 italic",
-    "izoh": "500 italic",
-    "subtitr": "700 normal"
-  },
-  "olcham_1080": {
-    "hook_kegl": 66,
-    "chip_katta": 78,
-    "chip_kichik": 39,
-    "karta_ust": 51,
-    "karta_band": 78,
-    "karta_quote": 84,
-    "subtitr": 51
-  },
-  "joylashuv_1080": {
-    "hook_x": 72, "hook_y": 36,
-    "chip_y": 1230, "chip_chet": 72, "chip_balandlik": 210, "chip_radius": 36,
-    "karta_ust_y": 500, "karta_band_y": 1110,
-    "subtitr_x": 230, "subtitr_y": 1238
-  },
-  "_izoh": "Referens-1 ning to'q ko'k palitrasi BEKOR QILINDI — mijoz referens-2 ga o'xshatishni so'radi."
+ "_manba": "Tuzilma/joylashuv 1cb7e559-reference2.mp4 dan; RANGLAR mijoz brendidan (dermatolog_axmedov Instagram) o'lchangan",
+ "rang": {
+  "brend_yorqin": "#14A95C",
+  "brend": "#0E9550",
+  "brend_toq": "#063A24",
+  "tog_1": "#04301E",
+  "tog_2": "#021B11",
+  "oq": "#FFFFFF",
+  "ikkilamchi": "#EAF7EF",
+  "amber": "#F2C14E",
+  "setka": "rgba(255,255,255,0.05)"
+ },
+ "shrift": {
+  "oila": "Inter",
+  "sarlavha": "900 italic",
+  "izoh": "500 italic",
+  "subtitr": "700 normal"
+ },
+ "olcham_1080": {
+  "hook_kegl": 66,
+  "chip_katta": 78,
+  "chip_kichik": 39,
+  "karta_ust": 51,
+  "karta_band": 78,
+  "karta_quote": 84,
+  "subtitr": 51
+ },
+ "joylashuv_1080": {
+  "hook_x": 72,
+  "hook_y": 36,
+  "chip_y": 1230,
+  "chip_chet": 72,
+  "chip_balandlik": 210,
+  "chip_radius": 36,
+  "karta_ust_y": 500,
+  "karta_band_y": 1110,
+  "subtitr_x": 230,
+  "subtitr_y": 1238
+ },
+ "_izoh": "Referens-1 ning to'q ko'k palitrasi BEKOR QILINDI — mijoz referens-2 ga o'xshatishni so'radi.",
+ "_rang_izoh": "Referensning qizili mijoz brendiga to'g'ri kelmaydi — Instagram sahifasidagi yashil (#0E9550) o'lchab olindi va shunga qurildi."
 }

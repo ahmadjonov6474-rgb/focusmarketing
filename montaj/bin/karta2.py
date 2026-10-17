@@ -30,19 +30,19 @@ BOSH = """<!doctype html><meta charset="utf-8">
 <style>
   @font-face {{ font-family:'InterI'; src:local('Inter'); }}
   :root {{
-    --qizil-yorqin:{qizil_yorqin}; --qizil:{qizil}; --qizil-toq:{qizil_toq};
-    --tog1:{tog_1}; --tog2:{tog_2}; --oq:{oq}; --pushti:{pushti_oq};
+    --brend-yorqin:{brend_yorqin}; --brend:{brend}; --brend-toq:{brend_toq};
+    --tog1:{tog_1}; --tog2:{tog_2}; --oq:{oq}; --ikkilamchi:{ikkilamchi};
     --amber:{amber};
   }}
   * {{ margin:0; padding:0; box-sizing:border-box; }}
   html,body {{ width:{W}px; height:{H}px; overflow:hidden; }}
   body {{ font-family:'Inter',sans-serif; color:var(--oq); background:{fon}; }}
 
-  /* --- qizil karta foni --- */
+  /* --- brend rangidagi karta foni --- */
   .karta {{ position:absolute; inset:0;
     background:
       radial-gradient(ellipse 72% 46% at 50% 32%,
-        var(--qizil-yorqin) 0%, var(--qizil) 46%, var(--qizil-toq) 100%);
+        var(--brend-yorqin) 0%, var(--brend) 46%, var(--brend-toq) 100%);
   }}
   .setka {{ position:absolute; inset:0;
     background-image:
@@ -61,7 +61,7 @@ BOSH = """<!doctype html><meta charset="utf-8">
     background:var(--oq); display:flex; align-items:center;
     justify-content:center; overflow:hidden;
     box-shadow:0 14px 44px rgba(0,0,0,.42); }}
-  .band span {{ color:var(--qizil); font-size:{karta_band}px; font-weight:900;
+  .band span {{ color:var(--brend); font-size:{karta_band}px; font-weight:900;
     font-style:italic; text-transform:uppercase; letter-spacing:-.01em;
     white-space:nowrap; padding:0 46px; }}
   .chiplar {{ position:absolute; left:0; right:0; top:{chiplar_y}px;
@@ -79,7 +79,7 @@ BOSH = """<!doctype html><meta charset="utf-8">
     top:{chip_y}px; min-height:{chip_balandlik}px;
     border-radius:{chip_radius}px; display:flex; align-items:center;
     gap:34px; padding:26px 38px;
-    background:linear-gradient(152deg, var(--qizil-yorqin), var(--qizil) 72%);
+    background:linear-gradient(152deg, var(--brend-yorqin), var(--brend) 72%);
     border:3px solid rgba(255,255,255,.85);
     box-shadow:0 20px 56px rgba(0,0,0,.55); }}
   .ikon {{ flex:0 0 120px; height:120px; border-radius:999px;
@@ -115,10 +115,10 @@ IKONLAR = {
 }
 
 
-def tana_karta(e, holat):
+def tana_karta(e, holat, r_tog1="#04301E", r_tog2="#021B11"):
     """holat: 0 = faqat fon+ust, 1 = band ochilmoqda, 2 = to'liq"""
     t = [f'<div class="karta"></div><div class="setka"></div>',
-         TOG.format(tog1="#3A0002", tog2="#210001")]
+         TOG.format(tog1=r_tog1, tog2=r_tog2)]
     if e.get("ust"):
         t.append(f'<div class="ust">{html.escape(e["ust"])}</div>')
     if holat >= 1 and e.get("band"):
@@ -198,7 +198,7 @@ def main():
             fayl = os.path.join(a.out, f"{i:02d}{chr(97+k)}_{tur}.png")
             doc = BOSH.format(
                 W=W, H=H, tana=f(e, hol),
-                fon="transparent" if shaffof else r["qizil_toq"],
+                fon="transparent" if shaffof else r["brend_toq"],
                 **{k2: v for k2, v in r.items() if not k2.startswith("_")},
                 chiplar_y=j["karta_band_y"] + 180,
                 quote_y=j["karta_band_y"] + 420, **o, **j)
