@@ -75,8 +75,11 @@ Style: Soz,Inter,{kegl},{rang},{rang},&H00000000,&H00000000,-1,0,0,0,100,100,2,0
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
+    # har qator kichikroq va shaffofroq holatdan "pop" bo'lib chiqadi
+    anim = (r"{\fscx86\fscy86\alpha&H60&"
+            r"\t(0,110,\fscx100\fscy100\alpha&H00&)}")
     satrlar = [f"Dialogue: 0,{ts(c['start'])},{ts(c['end'])},Soz,,0,0,0,,"
-               f"{c['text'].upper()}" for c in cues]
+               f"{anim}{c['text'].upper()}" for c in cues]
     return head + "\n".join(satrlar) + "\n"
 
 

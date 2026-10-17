@@ -40,12 +40,28 @@ def vcodec(preview):
             "-pix_fmt", "yuv420p", "-profile:v", "high"]
 
 
-def kes_klip(cam, s, e, W, H, fps, preview, out):
+def push_in(W, H, fps, dur, zoom):
+    """Kadrga sekin yaqinlashuv — statik planga jon kiritadi.
+
+    Jitterni kamaytirish uchun avval 1.6x ga kattalashtiriladi, keyin
+    zoompan 1080x1920 ga qaytaradi: shunda siljish subpiksel bo'ladi.
+    """
+    nf = max(2, int(round(dur * fps)))
+    return (f",scale=iw*1.6:-2:flags=bicubic,"
+            f"zoompan=z='1+{zoom:.4f}*on/{nf}':d=1:"
+            f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+            f"s={W}x{H}:fps={fps}")
+
+
+def kes_klip(cam, s, e, W, H, fps, preview, out, zoom=0.0):
     """Bitta klipni manbadan kesib, kadrlab, kodlaydi (video only)."""
     ss = s + cam.get("offset", 0.0)
+    vf = framing(cam, W, H, fps)
+    if zoom > 0:
+        vf += push_in(W, H, fps, e - s, zoom)
     cmd = (["ffmpeg", "-y", "-v", "error", "-ss", f"{ss:.3f}",
             "-i", cam["fayl"], "-t", f"{e - s:.3f}", "-an",
-            "-vf", framing(cam, W, H, fps)]
+            "-vf", vf]
            + vcodec(preview)
            + ["-video_track_timescale", "90000", out])
     subprocess.run(cmd, check=True)
@@ -74,6 +90,8 @@ def main():
     p.add_argument("--preview", action="store_true",
                    help="tez, past sifatli ko'rik")
     p.add_argument("--ish", help="vaqtinchalik papka (standart: temp)")
+    p.add_argument("--zoom", type=float, default=0.0,
+                   help="har klipda sekin yaqinlashuv (masalan 0.05 = 5%%)")
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args()
 
@@ -97,7 +115,7 @@ def main():
         segs = []
         for i, (s, e, c) in enumerate(klips):
             f = os.path.join(ish, f"seg{i:03d}.mp4")
-            kes_klip(cams[c], s, e, W, H, fps, args.preview, f)
+            kes_klip(cams[c], s, e, W, H, fps, args.preview, f, args.zoom)
             segs.append(f)
             print(f"  [{i + 1:3d}/{len(klips)}] kamera {c}  "
                   f"{s:7.2f}-{e:7.2f}  ({e - s:5.2f}s)", flush=True)

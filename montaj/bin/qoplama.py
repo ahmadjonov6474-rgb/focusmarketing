@@ -11,8 +11,11 @@ Animatsiya turlari:
 """
 import argparse, json, os, subprocess, sys
 
-SLIDE = 0.25     # sirg'alish davomiyligi
-SILJISH = 260    # necha piksel pastdan ko'tariladi
+# Referensdan o'lchangan o'tish (11.40-11.60 s):
+#   2 kadr kadr qorayadi -> 1-2 kadr oq chaqnash -> karta 0.2 s da normal
+#   yorqinlikka tushadi. Pop kadrlari karta2.py da tayyorlanadi.
+QORAYISH = 0.08   # kartadan oldin kadr qorayadi
+CHAQNASH = 0.22   # oq chaqnash so'nishi
 
 
 def main():
@@ -21,6 +24,10 @@ def main():
     p.add_argument("-o", "--out", required=True)
     p.add_argument("--subs", help="ASS fayl (chiqish vaqtida)")
     p.add_argument("--reja", help="karta2.py bergan reja.json")
+    p.add_argument("--qora", default="work/grafika_qora.png")
+    p.add_argument("--oq", default="work/grafika_oq.png")
+    p.add_argument("--chaqnashsiz", action="store_true",
+                   help="kartalarga chaqnash o'tishini qo'shmaslik")
     p.add_argument("--crf", type=int, default=18)
     p.add_argument("--preset", default="medium")
     p.add_argument("--dry-run", action="store_true")
@@ -28,33 +35,50 @@ def main():
 
     reja = json.load(open(a.reja)) if a.reja else []
 
+    # --- kartaga chaqnash bilan o'tish ---
+    flash = []
+    if reja and not a.chaqnashsiz:
+        kartalar = {}
+        for e in reja:
+            if e["tur"] == "karta":
+                k = os.path.basename(e["png"])[:2]
+                kartalar.setdefault(k, e["start"])
+        for t0 in sorted(kartalar.values()):
+            flash.append({"png": a.qora, "tur": "oq",
+                          "start": round(t0 - QORAYISH, 3), "end": round(t0, 3),
+                          "animatsiya": "tinch"})
+            flash.append({"png": a.oq, "tur": "oq", "sonish": True,
+                          "start": round(t0, 3),
+                          "end": round(t0 + CHAQNASH, 3),
+                          "animatsiya": "tinch"})
+    reja = reja + flash
+
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "warning", "-stats",
            "-i", a.video]
     for e in reja:
         cmd += ["-loop", "1", "-i", e["png"]]
 
-    zanjir, oqim = [], "0:v"
+    # har PNG oqimini o'z vaqtiga suramiz va kirishda fade beramiz,
+    # shunda element "paydo bo'lib" chiqadi, birdan tushib qolmaydi
+    tayyor = []
+    for i, e in enumerate(reja, 1):
+        if e.get("sonish"):      # oq chaqnash: to'liq oqdan nolga so'nadi
+            f = f"fade=t=out:st={e['start']:.3f}:d={CHAQNASH}:alpha=1"
+        else:
+            f = "null"
+        tayyor.append(
+            f"[{i}:v]format=rgba,setpts=PTS+{e['start']:.3f}/TB,{f}[ov{i}]")
+
+    zanjir, oqim = list(tayyor), "0:v"
     if a.subs:
         zanjir.append(f"[{oqim}]subtitles={a.subs}[vs]")
         oqim = "vs"
 
-    # bir element ichidagi birinchi holatgina sirg'aladi
-    birinchi = {}
-    for e in reja:
-        kalit = os.path.basename(e["png"])[:2]
-        birinchi.setdefault(kalit, e["start"])
-
     for i, e in enumerate(reja, 1):
         yangi = f"v{i}"
         s, t = e["start"], e["end"]
-        kalit = os.path.basename(e["png"])[:2]
-        if e.get("animatsiya") == "pastdan" and abs(birinchi[kalit] - s) < 1e-6:
-            y = (f"if(lt(t-{s:.3f},{SLIDE}),"
-                 f"{SILJISH}*(1-(t-{s:.3f})/{SLIDE}),0)")
-        else:
-            y = "0"
         zanjir.append(
-            f"[{oqim}][{i}:v]overlay=x=0:y='{y}':"
+            f"[{oqim}][ov{i}]overlay=x=0:y=0:"
             f"enable='between(t,{s:.3f},{t:.3f})'[{yangi}]")
         oqim = yangi
 

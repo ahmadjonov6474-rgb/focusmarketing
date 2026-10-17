@@ -92,8 +92,13 @@ BOSH = """<!doctype html><meta charset="utf-8">
   .chip .kichik {{ font-size:{chip_kichik}px; font-weight:500;
     font-style:italic; color:rgba(255,255,255,.93); margin-top:10px; }}
 
+  /* --- pop animatsiyasi: element markazdan kattalashib chiqadi --- */
+  .chip, .hook {{ transform:scale({pop_s}); opacity:{pop_a};
+    transform-origin:center center; }}
+
   /* --- hook sarlavha --- */
   .hook {{ position:absolute; left:{hook_x}px; top:{hook_y}px; right:80px;
+    transform-origin:left top;
     font-size:{hook_kegl}px; font-weight:900; font-style:italic;
     text-transform:uppercase; line-height:1.12; letter-spacing:-.005em;
     text-shadow:0 6px 26px rgba(0,0,0,.8), 0 2px 6px rgba(0,0,0,.9); }}
@@ -154,6 +159,13 @@ def tana_hook(e, holat):
     return f'<div class="hook">{html.escape(bosh)}</div>'
 
 
+# Referensda chip 0.27 s da chiqadi: ~0.14 s kengayish (6% ortiqcha),
+# keyin ~0.13 s orqaga qaytish. 30 fps da 8 kadr.
+POP = [(0.86, 0.35), (0.95, 0.70), (1.02, 0.92), (1.06, 1.00),
+       (1.045, 1.00), (1.02, 1.00), (1.005, 1.00), (1.00, 1.00)]
+POP_FPS = 25   # chiqish videosi 25 fps — har holat aynan bitta kadr
+
+
 def render(doc, out, shaffof, bc):
     with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False) as f:
         f.write(doc)
@@ -192,22 +204,41 @@ def main():
         else:
             holatlar, f = ([0, 1] if len(e["matn"].split()) > 1 else [0]), tana_hook
 
+        # --- pop kirishi (faqat chip va hook uchun) ---
+        if tur in ("chip", "hook") and e.get("pop", True):
+            for pi, (ps, pa) in enumerate(POP):
+                fayl = os.path.join(a.out, f"{i:02d}p{pi}_{tur}.png")
+                doc = BOSH.format(
+                    W=W, H=H, tana=f(e, holatlar[0]), fon="transparent",
+                    pop_s=ps, pop_a=pa,
+                    **{k2: v for k2, v in r.items() if not k2.startswith("_")},
+                    chiplar_y=j["karta_band_y"] + 180,
+                    quote_y=j["karta_band_y"] + 420, **o, **j)
+                render(doc, fayl, True, bc)
+                reja.append({"png": fayl, "tur": tur,
+                             "start": round(e["start"] + pi / POP_FPS, 3),
+                             "end": round(e["start"] + (pi + 1) / POP_FPS, 3),
+                             "animatsiya": "pop"})
+            bosh_siljish = len(POP) / POP_FPS
+        else:
+            bosh_siljish = 0.0
+
         n = len(holatlar)
-        uz = (e["end"] - e["start"]) / n
+        uz = (e["end"] - e["start"] - bosh_siljish) / n
         for k, hol in enumerate(holatlar):
             fayl = os.path.join(a.out, f"{i:02d}{chr(97+k)}_{tur}.png")
             doc = BOSH.format(
-                W=W, H=H, tana=f(e, hol),
+                W=W, H=H, tana=f(e, hol), pop_s=1.0, pop_a=1.0,
                 fon="transparent" if shaffof else r["brend_toq"],
                 **{k2: v for k2, v in r.items() if not k2.startswith("_")},
                 chiplar_y=j["karta_band_y"] + 180,
                 quote_y=j["karta_band_y"] + 420, **o, **j)
             render(doc, fayl, shaffof, bc)
+            b0 = e["start"] + bosh_siljish + k * uz
             reja.append({"png": fayl, "tur": tur,
-                         "start": round(e["start"] + k * uz, 2),
-                         "end": round(e["end"] if k == n - 1
-                                      else e["start"] + (k + 1) * uz, 2),
-                         "animatsiya": e.get("animatsiya", "")})
+                         "start": round(b0, 3),
+                         "end": round(e["end"] if k == n - 1 else b0 + uz, 3),
+                         "animatsiya": "tinch"})
             print(f"  {fayl}  {reja[-1]['start']:6.2f}-{reja[-1]['end']:6.2f}")
 
     json.dump(reja, open(os.path.join(a.out, "reja.json"), "w"),
