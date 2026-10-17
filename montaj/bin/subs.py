@@ -7,11 +7,19 @@ Uslub referensdan olingan: to'yingan ko'k pill, oq qalin matn.
 """
 import argparse, json, sys
 
+# Ikki uslub bor:
+#   pill — referens-1 (kurs sotuvi): to'yingan ko'k pill ostida oq matn
+#   soya — referens-2 (storytelling): qalin oq matn + qattiq soya, fonsiz.
+#          To'q, kechki kadrda tinchroq ko'rinadi va yuzni yopmaydi.
+USLUBLAR = {
+    "pill": {"kegl": 58, "fon": "&H00A43904", "border": 3, "outline": 14,
+             "shadow": 0},
+    "soya": {"kegl": 66, "fon": "&H00000000", "border": 1, "outline": 5,
+             "shadow": 3},
+}
 STYLE = {
-    "pill": "&H00A43904",      # ASS = BGR: #0439A4
     "matn": "&H00FFFFFF",
-    "kegl": 58,
-    "pastdan": 300,            # 1920 balandlikda pastdan masofa
+    "pastdan": 420,            # 1920 balandlikda pastdan masofa (UI zonasidan tepada)
 }
 
 
@@ -64,18 +72,19 @@ def ts(t):
     return f"{h:d}:{m:02d}:{s:05.2f}"
 
 
-def ass(cues, W, H):
-    y = STYLE["pastdan"]
+def ass(cues, W, H, uslub="soya", pastdan=None):
+    u = USLUBLAR[uslub]
+    y = pastdan if pastdan is not None else STYLE["pastdan"]
     head = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {W}
 PlayResY: {H}
-WrapStyle: 2
+WrapStyle: 0
 ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Pill,Inter,{STYLE['kegl']},{STYLE['matn']},{STYLE['matn']},{STYLE['pill']},{STYLE['pill']},-1,0,0,0,100,100,0,0,3,14,0,2,80,80,{y},1
+Style: Pill,Inter,{u['kegl']},{STYLE['matn']},{STYLE['matn']},{u['fon']},{u['fon']},-1,0,0,0,100,100,0,0,{u['border']},{u['outline']},{u['shadow']},2,90,90,{y},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -92,13 +101,15 @@ def main():
     p.add_argument("-o", "--out", required=True)
     p.add_argument("--w", type=int, default=1080)
     p.add_argument("--h", type=int, default=1920)
+    p.add_argument("--uslub", choices=sorted(USLUBLAR), default="soya")
+    p.add_argument("--pastdan", type=int)
     a = p.parse_args()
 
     cues = json.load(open(a.transcript))
     edl = json.load(open(a.edl))
     xar = xarita(edl)
     out = qayta_vaqtla(cues, xar)
-    open(a.out, "w").write(ass(out, a.w, a.h))
+    open(a.out, "w").write(ass(out, a.w, a.h, a.uslub, a.pastdan))
     yoq = len(cues) - len({c["text"] for c in out})
     print(f"{a.out}: {len(out)} subtitr "
           f"({yoq} ta kesilgan qismga tushib qoldi)")
