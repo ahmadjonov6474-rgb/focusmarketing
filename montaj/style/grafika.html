@@ -72,8 +72,10 @@ const easeOutCubic = p => 1-Math.pow(1-p,3);
 const easeInCubic  = p => p*p*p;
 const easeOutBack  = (p,s=1.9) => 1+(s+1)*Math.pow(p-1,3)+s*Math.pow(p-1,2);
 // referensdan o'lchangan spring: ~6% oshib ketadi, keyin tebranmay to'xtaydi
+// Overshoot = amplituda * exp(-d*pi/w). Referensda ~6% o'lchangan,
+// shuning uchun d/w ~ 0.31 bo'lishi kerak (d=3.9, w=12.5).
 const spring = p => { if(p>=1) return 1;
-  const d=8.5, w=12.5;                       // so'nish va chastota
+  const d=3.9, w=12.5;
   return 1 - Math.exp(-d*p)*Math.cos(w*p); };
 
 const SEN = window.__SENARIY__;
@@ -131,7 +133,7 @@ for(const e of SEN){
   if(e.tur==='karta'){
     // karta: oldin kadr qorayadi, keyin oq chaqnash, so'ng fon joyiga tushadi
     const dip = clamp((T-(e.start-0.08))/0.08) * (1-clamp((T-e.start)/0.02));
-    const flash = 1-clamp((T-e.start)/0.22);
+    const flash = T < e.start ? 0 : 1-clamp((T-e.start)/0.22);
     const fonS = 1.06-0.06*easeOutCubic(clamp((T-e.start)/0.9));
     const st=(i)=>clamp((T-e.start-0.10-0.12*i)/0.34);
     const bandW = 100*easeOutCubic(st(1));
