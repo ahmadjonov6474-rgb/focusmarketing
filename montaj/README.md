@@ -106,15 +106,33 @@ Tuzilma va darajalar izohi — `hikoya-tuzilma.md`.
 
 ## Holat
 
+Haqiqiy material: ikki kamera, 4K Sony XAVC, 120.5 s va 130.6 s.
+
 | Bosqich | Holat |
 |---|---|
-| Sinxronlash | ✅ sinaldi (3.700 s, ishonch 17.8) |
-| Nutq/pauza ajratish | ✅ sinaldi (9/9 bo'lak aniq) |
-| Kesim + kamera almashinuvi | ✅ sinaldi (A B A B A B A B) |
-| Yig'ish | ✅ sinaldi (vaqtlar aniq mos) |
-| Subtitr ko'chirish | ✅ sinaldi (kesilganlari tushib qoldi) |
-| Ovoz masteringi | ✅ −14.1 LUFS, LRA 1.1 (referens: −14.1 / 1.3) |
-| Transkripsiya | ⛔ model yuklab olinmaydi — `huggingface.co` ochilishi kerak |
-| Grafikalar (HTML → Playwright) | ⬜ hali qurilmagan |
+| Sinxronlash | ✅ `offset_b=4.868` — GCC-PHAT cho'qqisi fondan **376×** kuchli |
+| Kamera burilishi | ✅ `transpose=2` (material yonboshlatib olingan) |
+| Nutq/pauza ajratish | ✅ 32 bo'lak, 101.2 s nutq / 120.5 s |
+| Kesim + kamera almashinuvi | ✅ 17 klip, 16 almashinuv, o'rtacha kadr 6.24 s |
+| Yig'ish | ✅ 106.16 s, 1080×1920, 25 fps (3 min render) |
+| Ovoz masteringi | ✅ −14.4 LUFS, LRA 1.9 |
+| Grafika kartalari | ✅ `karta.py` — HTML/CSS → PNG (headless Chromium) |
+| Subtitr ko'chirish | ✅ zanjir ishlaydi, lekin **matn kerak** (pastga qarang) |
+| Transkripsiya | ⛔ Whisper o'zbek tilini eplamaydi |
 
-Pipeline sun'iy ikki-kamera materialida uchdan-uchgacha sinaldi.
+### Transkripsiya nega ishlamadi
+
+Sinaldi: `whisper-turbo` va `whisper-large-v3` (sherpa-onnx, int8), xom ovoz,
+shovqindan tozalangan ovoz, ASR uchun EQ bilan ochilgan ovoz. Hammasida matn
+o'qib bo'lmaydigan darajada buziladi ("Qabulinizi en agur akholdaki gen
+bimar..."). Sabab modelda: o'zbek tili Whisper uchun kam resursli til va
+chiqish turkcha imloga og'ib ketadi. Ovozda kesilish yo'q (0.019%), ya'ni
+material aybdor emas.
+
+Shuning uchun **nima gapirilgani muharrirdan so'raladi** — qaysi oraliq
+qolishi va subtitr matni. `work/BELGILASH.md` shu uchun generatsiya qilinadi.
+
+### Tarmoq eslatmasi
+
+HF model CDN'lari (`us.aws.cdn.hf.co`, `cas-server.xethub.hf.co`) odatda
+yopiq. Modellar GitHub release'dan olinadi (`k2-fsa/sherpa-onnx`) — u ochiq.
