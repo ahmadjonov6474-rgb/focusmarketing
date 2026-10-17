@@ -1,11 +1,55 @@
 #!/usr/bin/env python3
-"""Kesim rejasini (EDL) quradi: pauzalarni olib tashlaydi va kamera almashinuvini belgilaydi.
+"""Kesim rejasini (EDL) quradi.
 
-Asosiy qoida — har safar pauza kesilganda kamera almashadi.
-Shunda jump-cut ko'rinmaydi: sakrash rakurs o'zgarishi ostida yashirinadi.
+Uch bosqich:
+  1. tanlov  — hikoyaning qaysi bo'laklari qoladi (muharrir qarori, tanlov.json)
+  2. siqish  — maqsadli davomiylikka sig'dirish (eng past muhimlikdan kesiladi)
+  3. ritm    — pauzalarni olib tashlash va kamera almashinuvini belgilash
+
+Asosiy qoida: pauza kesilgan har bir nuqtada kamera ALBATTA almashadi —
+shunda jump-cut rakurs o'zgarishi ostida yashirinadi.
 """
 import argparse, json, sys
 
+
+# --- 1. tanlov -------------------------------------------------------------
+
+def tanla(speech, tanlov):
+    """Nutq bo'laklarini tanlangan oraliqlar bilan kesishtiradi."""
+    out = []
+    for t in tanlov:
+        ts, te = t["start"], t["end"]
+        muh = t.get("muhimlik", 3)
+        izoh = t.get("izoh", "")
+        for s, e in speech:
+            a, b = max(s, ts), min(e, te)
+            if b - a > 0.15:
+                out.append({"s": a, "e": b, "muhimlik": muh, "izoh": izoh})
+    out.sort(key=lambda x: x["s"])
+    return out
+
+
+# --- 2. siqish -------------------------------------------------------------
+
+def sigdir(bolaklar, maqsad, keep):
+    """Maqsadli davomiylikka sig'maguncha eng past muhimlikdagini tashlaydi."""
+    def jami(bs):
+        if not bs:
+            return 0.0
+        t = sum(b["e"] - b["s"] for b in bs)
+        # qoladigan nafaslar ham vaqt oladi
+        return t + keep * max(0, len(bs) - 1)
+
+    tashlandi = []
+    while bolaklar and jami(bolaklar) > maqsad:
+        # eng past muhimlik, ular ichida eng uzuni (ko'proq vaqt bo'shatadi)
+        n = min(bolaklar, key=lambda b: (b["muhimlik"], -(b["e"] - b["s"])))
+        bolaklar = [b for b in bolaklar if b is not n]
+        tashlandi.append(n)
+    return bolaklar, tashlandi, jami(bolaklar)
+
+
+# --- 3. ritm ---------------------------------------------------------------
 
 def birlashtir(speech, keep):
     """Qisqa pauzalarni (<= keep) bo'lak ichiga qo'shib yuboradi.
@@ -28,21 +72,15 @@ def plan(speech, params):
     speech = birlashtir(speech, keep)
     min_shot = params["shot_min"]
     max_shot = params["shot_max"]
-    target = params["shot_ortacha"]
     hook_until = params["hook_s"]
     hook_shot = params["hook_shot"]
 
-    clips = []            # [manba_boshi, manba_oxiri, kamera]
-    cam = 0               # 0 = A, 1 = B
-    shot_len = 0.0        # joriy kadr uzunligi (chiqish vaqtida)
-    out_t = 0.0
+    clips, cam, shot_len, out_t = [], 0, 0.0, 0.0
 
     for i, (s, e) in enumerate(speech):
-        # oldingi bo'lakdan keyin pauza kesilgan bo'lsa — kamera almashtir
         if i > 0:
-            # Bu yerda albatta pauza kesilgan (qisqalari allaqachon
-            # birlashtirilgan), demak kamera ALBATTA almashishi shart —
-            # aks holda sakrash ko'zga tashlanadi.
+            # Bu yerda albatta pauza kesilgan (qisqalari birlashtirilgan),
+            # demak kamera ALBATTA almashishi shart.
             cam ^= 1
             shot_len = 0.0
 
@@ -51,8 +89,6 @@ def plan(speech, params):
             limit = hook_shot if out_t < hook_until else max_shot
             room = max(min_shot, limit - shot_len)
             take = min(seg_e - seg_s, room)
-
-            # juda qisqa quyruq qolmasin — qo'shib yubor
             if (seg_e - seg_s) - take < min_shot:
                 take = seg_e - seg_s
 
@@ -83,15 +119,15 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("speech_json", help="speech.py chiqishi (asosiy kamera)")
     p.add_argument("-o", "--out", required=True)
-    p.add_argument("--offset-b", type=float, default=0.0,
-                   help="B kameraning A ga nisbatan siljishi (sync.py)")
-    p.add_argument("--pauza-qoldiq", type=float, default=0.18,
-                   help="pauzadan qoldiriladigan nafas (s)")
+    p.add_argument("--tanlov", help="JSON: [{start,end,muhimlik,izoh}] — "
+                                    "hikoyaning qoladigan bo'laklari")
+    p.add_argument("--maqsad", type=float,
+                   help="maksimal davomiylik (s); oshsa past muhimlik kesiladi")
+    p.add_argument("--offset-b", type=float, default=0.0)
+    p.add_argument("--pauza-qoldiq", type=float, default=0.18)
     p.add_argument("--shot-min", type=float, default=0.7)
     p.add_argument("--shot-max", type=float, default=5.6)
-    p.add_argument("--shot-ortacha", type=float, default=2.4)
-    p.add_argument("--hook-s", type=float, default=3.0,
-                   help="boshidagi tez montaj zonasi")
+    p.add_argument("--hook-s", type=float, default=3.0)
     p.add_argument("--hook-shot", type=float, default=1.6)
     a = p.parse_args()
 
@@ -101,27 +137,49 @@ def main():
         print("XATO: nutq topilmadi", file=sys.stderr)
         return 1
 
-    params = {k: getattr(a, k.replace("-", "_")) for k in
-              ("pauza_qoldiq", "shot_min", "shot_max", "shot_ortacha",
-               "hook_s", "hook_shot")}
+    tashlandi = []
+    if a.tanlov:
+        bolaklar = tanla(speech, json.load(open(a.tanlov)))
+        if not bolaklar:
+            print("XATO: tanlov hech qaysi nutq bo'lagiga tushmadi",
+                  file=sys.stderr)
+            return 1
+        if a.maqsad:
+            bolaklar, tashlandi, _ = sigdir(bolaklar, a.maqsad, a.pauza_qoldiq)
+        speech = [[b["s"], b["e"]] for b in bolaklar]
+
+    params = {k: getattr(a, k) for k in
+              ("pauza_qoldiq", "shot_min", "shot_max", "hook_s", "hook_shot")}
     clips, out_dur = plan(speech, params)
     clips = merge(clips)
+
+    if a.maqsad and out_dur > a.maqsad + 0.5:
+        print(f"OGOHLANTIRISH: {out_dur:.1f}s — maqsaddan "
+              f"{out_dur - a.maqsad:.1f}s ortiq", file=sys.stderr)
 
     cuts = sum(1 for i in range(1, len(clips)) if clips[i][2] != clips[i - 1][2])
     edl = {
         "manba_davomiyligi": sp["davomiylik"],
         "chiqish_davomiyligi": round(out_dur, 2),
-        "tejaldi_s": round(sp["davomiylik"] - out_dur, 2),
+        "maqsad": a.maqsad,
         "offset_b": a.offset_b,
         "kamera_almashinuvi": cuts,
         "ortacha_shot_s": round(out_dur / max(1, cuts + 1), 2),
+        "tashlangan_bolaklar": [
+            {"start": round(t["s"], 2), "end": round(t["e"], 2),
+             "muhimlik": t["muhimlik"], "izoh": t["izoh"]} for t in tashlandi],
         "kliplar": clips,
     }
     open(a.out, "w").write(json.dumps(edl, ensure_ascii=False, indent=2))
+
     print(f"{a.out}: {len(clips)} klip, {cuts} ta kamera almashinuvi, "
-          f"{edl['chiqish_davomiyligi']}s "
-          f"(manbadan {edl['tejaldi_s']}s kesildi), "
-          f"o'rtacha kadr {edl['ortacha_shot_s']}s")
+          f"{edl['chiqish_davomiyligi']}s, o'rtacha kadr "
+          f"{edl['ortacha_shot_s']}s")
+    if tashlandi:
+        print(f"  sig'dirish uchun {len(tashlandi)} bo'lak tashlandi:")
+        for t in tashlandi:
+            print(f"    {t['s']:6.2f}-{t['e']:6.2f}  "
+                  f"muhimlik {t['muhimlik']}  {t['izoh']}")
     return 0
 
 

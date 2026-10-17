@@ -23,8 +23,9 @@ bin/sync.py work/camA.mp4 work/camB.mp4
 # 2. Nutq va pauzalarni ajratish (ovozi yaxshi kameradan)
 bin/speech.py work/camA.mp4 -o work/speech.json
 
-# 3. Kesim rejasi
-bin/edl.py work/speech.json -o work/edl.json --offset-b 3.700
+# 3. Kesim rejasi (tanlov = hikoyaning qoladigan bo'laklari)
+bin/edl.py work/speech.json -o work/edl.json --offset-b 3.700 \
+           --tanlov work/tanlov.json --maqsad 60
 
 # 4. Yig'ish
 bin/build.py work/cams.json work/edl.json -o work/cut.mp4 --preview   # tez ko'rik
@@ -75,6 +76,18 @@ va kesilgan joylarga tushganini tashlab yuboradi.
 | `--shot-max` | 5.6 | shundan uzun kadr majburan bo'linadi |
 | `--hook-s` | 3.0 | boshidagi tez montaj zonasi |
 | `--hook-shot` | 1.6 | hook zonasida kadr uzunligi |
+| `--tanlov` | — | qoladigan bo'laklar (muharrir qarori) |
+| `--maqsad` | — | maksimal davomiylik; oshsa past muhimlikdan kesiladi |
+
+### `tanlov.json`
+
+```json
+[{"start": 0.0, "end": 4.2, "muhimlik": 5, "izoh": "HOOK"},
+ {"start": 4.6, "end": 12.0, "muhimlik": 4, "izoh": "kontekst"}]
+```
+
+`muhimlik` 1–5. `--maqsad` ga sig'masa eng pastidan boshlab tashlanadi.
+Tuzilma va darajalar izohi — `hikoya-tuzilma.md`.
 
 ## Holat
 
