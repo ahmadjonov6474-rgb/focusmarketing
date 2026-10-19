@@ -1,0 +1,31 @@
+[
+ {"tur":"hook","start":0.40,"end":5.00,"matn":"Eng og'ir holat"},
+
+ {"tur":"chip","start":7.40,"end":11.50,"ikon":"kalendar",
+  "katta":"Har kuni 2-3 ta","kichik":"og'ir bemor keladi"},
+
+ {"tur":"chip","start":14.30,"end":18.60,"ikon":"odam",
+  "katta":"Kutib-kutib yurishadi","kichik":"«o'zi o'tib ketadi» deb"},
+
+ {"tur":"karta","start":20.00,"end":26.30,
+  "ust":"o'zbek xalqimiz shunaqa","band":"Oldini olmaymiz",
+  "chiplar":["«o'zi o'tib ketadi»","«tuzalib ketadi» deb kutamiz"],
+  "quote":"Asoratlangandan keyin keladi"},
+
+ {"tur":"chip","start":29.80,"end":34.60,"ikon":"odam",
+  "katta":"Bir ayol kelgan","kichik":"yuzidagi toshmalar tufayli"},
+
+ {"tur":"chip","start":41.00,"end":46.50,"ikon":"plus",
+  "katta":"15-20 kun","kichik":"lecheniyedan keyin ancha o'zgarish"},
+
+ {"tur":"karta","start":49.60,"end":55.60,
+  "ust":"shifokor bemorga aytgan gap","band":"Bu kasallik tuzaladi",
+  "chiplar":["o'limgacha borish shart emas"],
+  "quote":"«Opa, tuzalib ketasiz»"},
+
+ {"tur":"chip","start":57.30,"end":61.20,"ikon":"plus",
+  "katta":"Oddiy lecheniye","kichik":"shuni qilsangiz tuzalib ketasiz"},
+
+ {"tur":"chip","start":62.00,"end":66.00,"ikon":"yurak",
+  "katta":"Ikkinchi oy","kichik":"bemorning yuzida umuman qolmagan"}
+]

@@ -1,2 +1,7 @@
 # Xom material, mezzanine va renderlar repoga tushmaydi (yuz MB lar)
 work/
+
+# Remotion: paketlar va renderlar repoga kirmaydi
+remotion/node_modules/
+remotion/out/
+remotion/public/
